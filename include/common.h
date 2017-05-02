@@ -31,6 +31,7 @@
 
 #ifdef OSX
 #include <emmintrin.h>
+#include <tmmintrin.h>
 #else
 #include <x86intrin.h>
 #endif
@@ -96,7 +97,7 @@ typedef unsigned (__stdcall *PTHREAD_START) (void *);
 #define ACMutexInit(Dmutex)                       Dmutex = CreateMutex (0, FALSE, 0)
 #endif
 
-#ifdef POSIX
+#if defined LINUX || defined OSX || defined FREEBSD
 #include <pthread.h>
 typedef pthread_t THREAD;
 typedef pthread_mutex_t MUTEX;
@@ -112,7 +113,7 @@ typedef pthread_mutex_t MUTEX;
 #define SetPriorityHigh()   { HANDLE hProc = GetCurrentProcess(); SetPriorityClass (hProc, HIGH_PRIORITY_CLASS);   }
 #endif
 
-#ifdef POSIX
+#if defined LINUX || defined OSX || defined FREEBSD
 #include <sys/resource.h>
 #define SetPriorityLow()    setpriority (PRIO_PROCESS, 0, 1)
 #define SetPriorityNormal() setpriority (PRIO_PROCESS, 0, 0)
@@ -123,7 +124,7 @@ typedef pthread_mutex_t MUTEX;
 #define hc_sleep(x) Sleep ((x) * 1000);
 #endif
 
-#ifdef POSIX
+#if defined LINUX || defined OSX || defined FREEBSD
 #define hc_sleep(x) sleep ((x));
 #endif
 

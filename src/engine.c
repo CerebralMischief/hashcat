@@ -4599,6 +4599,8 @@ void md4_final_sse2_max55 (plain_t *plains, digest_md4_sse2_t *digests)
   {
     plain_t *ptr = plains + i;
 
+    if (ptr->len >= 56) continue;
+
     memset (ptr->buf8 + ptr->len, 0, 64 - ptr->len);
 
     ptr->buf8[ptr->len] = 0x80;
@@ -4617,6 +4619,8 @@ void md5_final_sse2_max55 (plain_t *plains, digest_md5_sse2_t *digests)
   {
     plain_t *ptr = plains + i;
 
+    if (ptr->len >= 56) continue;
+
     memset (ptr->buf8 + ptr->len, 0, 64 - ptr->len);
 
     ptr->buf8[ptr->len] = 0x80;
@@ -4634,6 +4638,8 @@ void sha1_final_sse2_max55 (plain_t *plains, digest_sha1_sse2_t *digests)
   for (i = 0; i < 4; i++)
   {
     plain_t *ptr = plains + i;
+
+    if (ptr->len >= 56) continue;
 
     memset (ptr->buf8 + ptr->len, 0, 64 - ptr->len);
 
@@ -4654,6 +4660,8 @@ void sha256_final_sse2_max55 (plain_t *plains, digest_sha256_sse2_t *digests)
   for (i = 0; i < 4; i++)
   {
     plain_t *ptr = plains + i;
+
+    if (ptr->len >= 56) continue;
 
     memset (ptr->buf8 + ptr->len, 0, 64 - ptr->len);
 
@@ -15554,6 +15562,13 @@ void *attack_a5r0 (thread_parameter_t *thread_parameter)
         memset (ptrs[j] + plains[j].len, 0, BLOCK_SIZE - plains[j].len);
       }
 
+      for (; j < 4; j++)
+      {
+        memset (ptrs[j], 0, BLOCK_SIZE);
+
+        plains[j].len = 0;
+      }
+
       thread_parameter->hashing (thread_parameter, plains);
 
       thread_parameter->thread_plains_done += left;
@@ -15647,7 +15662,7 @@ void *attack_a4r0 (thread_parameter_t *thread_parameter)
 
     for (k = 0; k < words->words_len[words_next] + 1; k++) p[k] = k;
 
-    k = 1;
+    k = 0;
 
     /* main loop */
 
@@ -15657,16 +15672,18 @@ void *attack_a4r0 (thread_parameter_t *thread_parameter)
     {
       for (i = 0; i < 4; i++)
       {
-        if ((k = next_permutation (words->words_buf[words_next], p, k)) == words->words_len[words_next]) break;
+        k = next_permutation (words->words_buf[words_next], p, k);
 
         memcpy (ptrs[i], words->words_buf[words_next], words->words_len[words_next]);
 
         plains[i].pos = thread_parameter->thread_plains_done + i;  // TODO: needs verification
+
+        if (k == words->words_len[words_next]) break;
       }
 
       int j;
 
-      for (j = i; j < 4; j++)
+      for (j = i + 1; j < 4; j++) // the +1 is here because if < 4, we did use 'break' to exit the loop
       {
         memset (ptrs[j], 0, BLOCK_SIZE);
 
@@ -15726,10 +15743,10 @@ void *attack_a3r0 (thread_parameter_t *thread_parameter)
   cs_t    *css_buf = thread_parameter->css_buf;
   uint32_t pw_len  = thread_parameter->pw_len;
 
-  plains[0].len = pw_len;
-  plains[1].len = pw_len;
-  plains[2].len = pw_len;
-  plains[3].len = pw_len;
+  if (words_steps > 0) plains[0].len = pw_len;
+  if (words_steps > 1) plains[1].len = pw_len;
+  if (words_steps > 2) plains[2].len = pw_len;
+  if (words_steps > 3) plains[3].len = pw_len;
 
   uint64 cur[4];
 
@@ -16331,7 +16348,9 @@ void *attack_a0r0 (thread_parameter_t *thread_parameter)
 
     uint32_t i;
 
-    for (i = 0; i < 4; i++, words_next++)
+    uint limit = MIN (4, words_steps - words_cur);
+
+    for (i = 0; i < limit; i++, words_next++)
     {
       int next_len = words->words_len[words_next];
 
@@ -16344,6 +16363,11 @@ void *attack_a0r0 (thread_parameter_t *thread_parameter)
       plains[i].len = next_len;
 
       plains[i].pos = thread_parameter->thread_words_done + i;
+    }
+
+    for (; i < 4; i++)
+    {
+      plains[i].len = 0;
     }
 
     thread_parameter->hashing (thread_parameter, plains);
@@ -17001,7 +17025,7 @@ void run_threads (engine_parameter_t *engine_parameter, db_t *db, void (*store_o
     CloseHandle (threads[thread_id]);
 #endif
 
-#ifdef POSIX
+#if defined LINUX || defined OSX || defined FREEBSD
     pthread_join (threads[thread_id], NULL);
 #endif
   }

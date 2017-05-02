@@ -2,8 +2,47 @@
 
 type.: Feature
 file.: Host
+desc.: Added native compilation support for FreeBSD
+PR...: 23, 25
+
+type.: Change
+file.: Host
+desc.: Reordered hash-type listing in usage screen and set default benchmark ordering analogue to that listing
+issue: 44
+
+type.: Bug
+file.: Host
+desc.: Fixed a problem with the -s / -l parameters in attack modes -a 0 (straight) and -a 3 (mask attack)
+issue: 2
+
+type.: Bug
+file.: Host
 desc.: Fixed a possible memory problem for hash type -m 11400 = SIP digest authentication (MD5)
 issue: 10
+
+type.: Bug
+file.: Host
+desc.: Fixed the output of attack mode -a 4 (permutation attack)
+issue: 36
+
+type.: Bug
+file.: Host
+desc.: Implemented a fix for the final output for attack mode -a 5 (table lookup attack)
+issue: 37
+
+type.: Bug
+file.: Host
+desc.: Fixed the use of -s / -l parameters together with the attack mode -a 8 (Prince)
+issue: 40
+
+type.: Bug
+file.: Host
+desc.: Fixed a memory issue with algorithms using unicode when trying password candidates longer than 27 characters
+issue: 54
+
+type.: Bug
+file.: Host
+desc.: Fixed --help text for hash type -m 9900 = Radmin2 (was wronly displayed as -m 9800 = Radmin2)
 
 * changes v0.50 -> v2.00:
 

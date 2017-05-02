@@ -3,6 +3,12 @@
  * License.....: MIT
  */
 
+#ifdef FREEBSD
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <sys/ttydefaults.h>
+#endif
+
 #ifdef OSX
 #include <sys/sysctl.h>
 #endif
@@ -16,17 +22,13 @@
 #include "engine.h"
 
 // for interactive status prompt
-#ifdef POSIX
-#ifndef OSX
-
-#include <termio.h>
-
-#else
-
+#if defined OSX || defined FREEBSD
 #include <termios.h>
 #include <sys/ioctl.h>
-
 #endif
+
+#if defined LINUX
+#include <termio.h>
 #endif
 
 #define USAGE_VIEW      0
@@ -81,72 +83,82 @@
 
 const char *PROMPT = "[s]tatus [p]ause [r]esume [b]ypass [q]uit => ";
 
-#define NUM_DEFAULT_BENCHMARK_ALGORITHMS 63
+#define NUM_DEFAULT_BENCHMARK_ALGORITHMS 72
 
 static uint default_benchmark_algorithms[NUM_DEFAULT_BENCHMARK_ALGORITHMS] =
 {
   900,
   0,
+  5100,
   100,
   1400,
   1700,
   5000,
   6900,
-  101,
-  111,
-  500,
-  7400,
-  1800,
-  3200,
-  1000,
-  1100,
+  400,
+  8900,
+  23,
+  2500,
+  5300,
+  5400,
   5500,
   5600,
-  141,
-  1441,
+  7300,
+  11100,
+  11200,
+  11400,
+  121,
+  2611,
+  2711,
+  2811,
+  8400,
+  11,
+  2612,
+  7900,
+  21,
+  11000,
+  124,
+  10000,
+  3711,
+  7600,
+  12,
   131,
   132,
   1731,
   200,
   300,
   112,
-  11100,
-  11200,
+  141,
+  1441,
+  1600,
+  1421,
+  101,
+  111,
+  1711,
+  1000,
+  1100,
+  500,
+  3200,
+  7400,
+  1800,
   122,
   1722,
   7100,
-  5800,
-  8900,
+  6300,
+  6700,
+  6400,
+  6500,
   2400,
   2410,
   5700,
+  9200,
   9300,
-  2500,
-  5300,
-  5400,
-  5200,
-  6700,
-  9900,
-  50,
-  60,
-  150,
-  160,
-  1450,
-  1460,
-  1750,
-  1760,
-  7300,
-  5100,
-  2600,
+  5800,
   7200,
-  400,
-  11400,
-  11,
-  21,
-  11000,
-  2811,
-  2611,
-  121
+  9900,
+  10300,
+  133,
+  5200
 };
 
 static const char *USAGE_MINI[] =
@@ -309,130 +321,172 @@ static const char *USAGE_BIG[] =
 "",
 "* Hash types:",
 "",
-"     0 = MD5",
-"    10 = md5($pass.$salt)",
-"    20 = md5($salt.$pass)",
-"    30 = md5(unicode($pass).$salt)",
-"    40 = md5($salt.unicode($pass))",
-"    50 = HMAC-MD5 (key = $pass)",
-"    60 = HMAC-MD5 (key = $salt)",
-"   100 = SHA1",
-"   110 = sha1($pass.$salt)",
-"   120 = sha1($salt.$pass)",
-"   130 = sha1(unicode($pass).$salt)",
-"   140 = sha1($salt.unicode($pass))",
-"   150 = HMAC-SHA1 (key = $pass)",
-"   160 = HMAC-SHA1 (key = $salt)",
-"   200 = MySQL323",
-"   300 = MySQL4.1/MySQL5",
-"   400 = phpass, MD5(Wordpress), MD5(phpBB3), MD5(Joomla)",
-"   500 = md5crypt, MD5(Unix), FreeBSD MD5, Cisco-IOS MD5",
-"   900 = MD4",
-"  1000 = NTLM",
-"  1100 = Domain Cached Credentials (DCC), MS Cache",
-"  1400 = SHA256",
-"  1410 = sha256($pass.$salt)",
-"  1420 = sha256($salt.$pass)",
-"  1430 = sha256(unicode($pass).$salt)",
-"  1431 = base64(sha256(unicode($pass)))",
-"  1440 = sha256($salt.unicode($pass))",
-"  1450 = HMAC-SHA256 (key = $pass)",
-"  1460 = HMAC-SHA256 (key = $salt)",
-//"  1500 = descrypt, DES(Unix), Traditional DES",
-"  1600 = md5apr1, MD5(APR), Apache MD5",
-"  1700 = SHA512",
-"  1710 = sha512($pass.$salt)",
-"  1720 = sha512($salt.$pass)",
-"  1730 = sha512(unicode($pass).$salt)",
-"  1740 = sha512($salt.unicode($pass))",
-"  1750 = HMAC-SHA512 (key = $pass)",
-"  1760 = HMAC-SHA512 (key = $salt)",
-"  1800 = SHA-512(Unix)",
-"  2400 = Cisco-PIX MD5",
-"  2410 = Cisco-ASA MD5",
-"  2500 = WPA/WPA2",
-"  2600 = Double MD5",
-"  3200 = bcrypt, Blowfish(OpenBSD)",
-"  3300 = MD5(Sun)",
-"  3500 = md5(md5(md5($pass)))",
-"  3610 = md5(md5($salt).$pass)",
-"  3710 = md5($salt.md5($pass))",
-"  3720 = md5($pass.md5($salt))",
-"  3800 = md5($salt.$pass.$salt)",
-"  3910 = md5(md5($pass).md5($salt))",
-"  4010 = md5($salt.md5($salt.$pass))",
-"  4110 = md5($salt.md5($pass.$salt))",
-"  4210 = md5($username.0.$pass)",
-"  4300 = md5(strtoupper(md5($pass)))",
-"  4400 = md5(sha1($pass))",
-"  4500 = Double SHA1",
-"  4600 = sha1(sha1(sha1($pass)))",
-"  4700 = sha1(md5($pass))",
-"  4800 = MD5(Chap), iSCSI CHAP authentication",
-"  4900 = sha1($salt.$pass.$salt)",
-"  5000 = SHA-3(Keccak)",
-"  5100 = Half MD5",
-"  5200 = Password Safe SHA-256",
-"  5300 = IKE-PSK MD5",
-"  5400 = IKE-PSK SHA1",
-"  5500 = NetNTLMv1-VANILLA / NetNTLMv1-ESS",
-"  5600 = NetNTLMv2",
-"  5700 = Cisco-IOS SHA256",
-"  5800 = Android PIN",
-"  6300 = AIX {smd5}",
-"  6400 = AIX {ssha256}",
-"  6500 = AIX {ssha512}",
-"  6700 = AIX {ssha1}",
-"  6900 = GOST, GOST R 34.11-94",
-"  7000 = Fortigate (FortiOS)",
-"  7100 = OS X v10.8+",
-"  7200 = GRUB 2",
-"  7300 = IPMI2 RAKP HMAC-SHA1",
-"  7400 = sha256crypt, SHA256(Unix)",
-"  7900 = Drupal7",
-"  8400 = WBB3, Woltlab Burning Board 3",
-"  8900 = scrypt",
-"  9200 = Cisco $8$",
-"  9300 = Cisco $9$",
-"  9800 = Radmin2",
-" 10000 = Django (PBKDF2-SHA256)",
-" 10200 = Cram MD5",
-" 10300 = SAP CODVN H (PWDSALTEDHASH) iSSHA-1",
-" 11000 = PrestaShop",
-" 11100 = PostgreSQL Challenge-Response Authentication (MD5)",
-" 11200 = MySQL Challenge-Response Authentication (SHA1)",
-" 11400 = SIP digest authentication (MD5)",
-" 99999 = Plaintext",
+"[[ Roll-your-own: Raw Hashes ]]",
 "",
-"* Specific hash types:",
+"    900 = MD4",
+"      0 = MD5",
+"   5100 = Half MD5",
+"    100 = SHA1",
+"   1400 = SHA-256",
+"   1700 = SHA-512",
+"   5000 = SHA-3(Keccak)",
+"   6900 = GOST R 34.11-94",
+"  99999 = Plaintext",
 "",
-"   11 = Joomla < 2.5.18",
-"   12 = PostgreSQL",
-"   21 = osCommerce, xt:Commerce",
-"   23 = Skype",
-"  101 = nsldap, SHA-1(Base64), Netscape LDAP SHA",
-"  111 = nsldaps, SSHA-1(Base64), Netscape LDAP SSHA",
-"  112 = Oracle S: Type (Oracle 11+)",
-"  121 = SMF > v1.1",
-"  122 = OS X v10.4, v10.5, v10.6",
-"  123 = EPi",
-"  124 = Django (SHA-1)",
-"  131 = MSSQL(2000)",
-"  132 = MSSQL(2005)",
-"  133 = PeopleSoft",
-"  141 = EPiServer 6.x < v4",
-" 1421 = hMailServer",
-" 1441 = EPiServer 6.x > v4",
-" 1711 = SSHA-512(Base64), LDAP {SSHA512}",
-" 1722 = OS X v10.7",
-" 1731 = MSSQL(2012 & 2014)",
-" 2611 = vBulletin < v3.8.5",
-" 2612 = PHPS",
-" 2711 = vBulletin > v3.8.5",
-" 2811 = IPB2+, MyBB1.2+",
-" 3711 = Mediawiki B type",
-" 3721 = WebEdition CMS",
-" 7600 = Redmine Project Management Web App"
+"[[ Roll-your-own: Iterated and / or Salted Hashes ]]",
+"",
+"     10 = md5($pass.$salt)",
+"     20 = md5($salt.$pass)",
+"     30 = md5(unicode($pass).$salt)",
+"     40 = md5($salt.unicode($pass))",
+"   3800 = md5($salt.$pass.$salt)",
+"   3710 = md5($salt.md5($pass))",
+"   4110 = md5($salt.md5($pass.$salt))",
+"   4010 = md5($salt.md5($salt.$pass))",
+"   4210 = md5($username.0.$pass)",
+"   3720 = md5($pass.md5($salt))",
+"   3500 = md5(md5(md5($pass)))",
+"   3610 = md5(md5($salt).$pass)",
+"   3910 = md5(md5($pass).md5($salt))",
+"   2600 = md5(md5($pass)",
+"   4300 = md5(strtoupper(md5($pass)))",
+"   4400 = md5(sha1($pass))",
+"    110 = sha1($pass.$salt)",
+"    120 = sha1($salt.$pass)",
+"    130 = sha1(unicode($pass).$salt)",
+"    140 = sha1($salt.unicode($pass))",
+"   4500 = sha1(sha1($pass)",
+"   4600 = sha1(sha1(sha1($pass)))",
+"   4700 = sha1(md5($pass))",
+"   4900 = sha1($salt.$pass.$salt)",
+"   1410 = sha256($pass.$salt)",
+"   1420 = sha256($salt.$pass)",
+"   1430 = sha256(unicode($pass).$salt)",
+"   1440 = sha256($salt.unicode($pass))",
+"   1710 = sha512($pass.$salt)",
+"   1720 = sha512($salt.$pass)",
+"   1730 = sha512(unicode($pass).$salt)",
+"   1740 = sha512($salt.unicode($pass))",
+"   1431 = base64(sha256(unicode($pass)))",
+"",
+"[[ Roll-your-own: Authenticated Hashes ]]",
+"",
+"     50 = HMAC-MD5 (key = $pass)",
+"     60 = HMAC-MD5 (key = $salt)",
+"    150 = HMAC-SHA1 (key = $pass)",
+"    160 = HMAC-SHA1 (key = $salt)",
+"   1450 = HMAC-SHA256 (key = $pass)",
+"   1460 = HMAC-SHA256 (key = $salt)",
+"   1750 = HMAC-SHA512 (key = $pass)",
+"   1760 = HMAC-SHA512 (key = $salt)",
+"",
+"[[ Generic KDF ]]",
+"",
+"    400 = phpass",
+"   8900 = scrypt",
+"",
+"[[ Network protocols, Challenge-Response ]]",
+"",
+"     23 = Skype",
+"   2500 = WPA/WPA2",
+"   4800 = iSCSI CHAP authentication, MD5(Chap)",
+"   5300 = IKE-PSK MD5",
+"   5400 = IKE-PSK SHA1",
+"   5500 = NetNTLMv1",
+"   5500 = NetNTLMv1 + ESS",
+"   5600 = NetNTLMv2",
+"   7300 = IPMI2 RAKP HMAC-SHA1",
+"  10200 = Cram MD5",
+"  11100 = PostgreSQL Challenge-Response Authentication (MD5)",
+"  11200 = MySQL Challenge-Response Authentication (SHA1)",
+"  11400 = SIP digest authentication (MD5)",
+"",
+"[[ Forums, CMS, E-Commerce, Frameworks, Middleware, Wiki, Management ]]",
+"",
+"    121 = SMF (Simple Machines Forum)",
+"    400 = phpBB3",
+"   2611 = vBulletin < v3.8.5",
+"   2711 = vBulletin > v3.8.5",
+"   2811 = MyBB",
+"   2811 = IPB (Invison Power Board)",
+"   8400 = WBB3 (Woltlab Burning Board)",
+"     11 = Joomla < 2.5.18",
+"    400 = Joomla > 2.5.18",
+"    400 = Wordpress",
+"   2612 = PHPS",
+"   7900 = Drupal7",
+"     21 = osCommerce",
+"     21 = xt:Commerce",
+"  11000 = PrestaShop",
+"    124 = Django (SHA-1)",
+"  10000 = Django (PBKDF2-SHA256)",
+"   3711 = Mediawiki B type",
+"   7600 = Redmine",
+"   3721 = WebEdition CMS",
+"",
+"[[ Database Server ]]",
+"",
+"     12 = PostgreSQL",
+"    131 = MSSQL(2000)",
+"    132 = MSSQL(2005)",
+"   1731 = MSSQL(2012)",
+"   1731 = MSSQL(2014)",
+"    200 = MySQL323",
+"    300 = MySQL4.1/MySQL5",
+"    112 = Oracle S: Type (Oracle 11+)",
+"",
+"[[ HTTP, SMTP, LDAP Server ]]",
+"",
+"    123 = EPi",
+"    141 = EPiServer 6.x < v4",
+"   1441 = EPiServer 6.x > v4",
+"   1600 = Apache $apr1$",
+"   1421 = hMailServer",
+"    101 = nsldap, SHA-1(Base64), Netscape LDAP SHA",
+"    111 = nsldaps, SSHA-1(Base64), Netscape LDAP SSHA",
+"   1711 = SSHA-512(Base64), LDAP {SSHA512}",
+"",
+"[[ Operating-Systems ]]",
+"",
+"   1000 = NTLM",
+"   1100 = Domain Cached Credentials (DCC), MS Cache",
+//"   1500 = descrypt, DES(Unix), Traditional DES",
+"    500 = md5crypt $1$, MD5(Unix)",
+"   3200 = bcrypt $2*$, Blowfish(Unix)",
+"   3300 = MD5(Sun)",
+"   7400 = sha256crypt $5$, SHA256(Unix)",
+"   1800 = sha512crypt $6$, SHA512(Unix)",
+"    122 = OSX v10.4",
+"    122 = OSX v10.5",
+"    122 = OSX v10.6",
+"   1722 = OSX v10.7",
+"   7100 = OSX v10.8",
+"   7100 = OSX v10.9",
+"   7100 = OSX v10.10",
+"   7100 = OSX v10.11",
+"   6300 = AIX {smd5}",
+"   6700 = AIX {ssha1}",
+"   6400 = AIX {ssha256}",
+"   6500 = AIX {ssha512}",
+"   2400 = Cisco-PIX",
+"   2410 = Cisco-ASA",
+"    500 = Cisco-IOS $1$",
+"   5700 = Cisco-IOS $4$",
+"   9200 = Cisco-IOS $8$",
+"   9300 = Cisco-IOS $9$",
+"   5800 = Android PIN",
+"   7200 = GRUB 2",
+"   9900 = Radmin2",
+"   7000 = Fortigate (FortiOS)",
+"",
+"[[ Enterprise Application Software (EAS) ]]",
+"",
+"  10300 = SAP CODVN H (PWDSALTEDHASH) iSSHA-1",
+"    133 = PeopleSoft",
+"",
+"[[ Password Managers ]]",
+"",
+"   5200 = Password Safe v3",
 "",
 NULL
 };
@@ -1075,7 +1129,7 @@ void wait_finish ()
   }
 #endif
 
-#ifdef POSIX
+#if defined LINUX || defined OSX || defined FREEBSD
   pthread_join (thr_keypress, NULL);
 
   if (thr_removehash)
@@ -1319,7 +1373,7 @@ void status_display_automat ()
   fputc ('\n', out);
   #endif
 
-  #ifdef POSIX
+  #if defined LINUX || defined OSX || defined FREEBSD
   fputc ('\n', out);
   #endif
 
@@ -2834,58 +2888,7 @@ void save_hash ()
   unlink (old_input_file);
 }
 
-#ifdef POSIX
-
-#ifndef OSX
-
-static struct termio savemodes;
-static int havemodes = 0;
-
-int tty_break ()
-{
-  struct termio modmodes;
-
-  if (ioctl (fileno (stdin), TCGETA, &savemodes) < 0) return -1;
-
-  havemodes = 1;
-
-  modmodes = savemodes;
-  modmodes.c_lflag &= ~ICANON;
-  modmodes.c_cc[VMIN] = 1;
-  modmodes.c_cc[VTIME] = 0;
-
-  return ioctl (fileno (stdin), TCSETAW, &modmodes);
-}
-
-int tty_getchar ()
-{
-  fd_set rfds;
-
-  FD_ZERO (&rfds);
-
-  FD_SET (fileno (stdin), &rfds);
-
-  struct timeval tv;
-
-  tv.tv_sec  = 1;
-  tv.tv_usec = 0;
-
-  int retval = select (1, &rfds, NULL, NULL, &tv);
-
-  if (retval ==  0) return  0;
-  if (retval == -1) return -1;
-
-  return getchar ();
-}
-
-int tty_fix ()
-{
-  if (!havemodes) return 0;
-
-  return ioctl (fileno (stdin), TCSETAW, &savemodes);
-}
-
-#else
+#if defined OSX  || defined FREEBSD
 
 static struct termios savemodes;
 static int havemodes = 0;
@@ -2934,6 +2937,54 @@ int tty_fix ()
   return ioctl (fileno (stdin), TIOCSETAW, &savemodes);
 }
 #endif
+
+#if defined LINUX
+static struct termio savemodes;
+static int havemodes = 0;
+
+int tty_break ()
+{
+  struct termio modmodes;
+
+  if (ioctl (fileno (stdin), TCGETA, &savemodes) < 0) return -1;
+
+  havemodes = 1;
+
+  modmodes = savemodes;
+  modmodes.c_lflag &= ~ICANON;
+  modmodes.c_cc[VMIN] = 1;
+  modmodes.c_cc[VTIME] = 0;
+
+  return ioctl (fileno (stdin), TCSETAW, &modmodes);
+}
+
+int tty_getchar ()
+{
+  fd_set rfds;
+
+  FD_ZERO (&rfds);
+
+  FD_SET (fileno (stdin), &rfds);
+
+  struct timeval tv;
+
+  tv.tv_sec  = 1;
+  tv.tv_usec = 0;
+
+  int retval = select (1, &rfds, NULL, NULL, &tv);
+
+  if (retval ==  0) return  0;
+  if (retval == -1) return -1;
+
+  return getchar ();
+}
+
+int tty_fix ()
+{
+  if (!havemodes) return 0;
+
+  return ioctl (fileno (stdin), TCSETAW, &savemodes);
+}
 #endif
 
 #ifdef WINDOWS
@@ -3678,7 +3729,6 @@ int fgetl (FILE *fp, char *line_buf)
 
 int get_cpu_model (char **name)
 {
-  #ifdef POSIX
   #ifdef OSX
 
   size_t buflen = BUFSIZ;
@@ -3694,7 +3744,9 @@ int get_cpu_model (char **name)
 
   return 0;
 
-  #else
+  #endif
+
+  #if defined LINUX || defined FREEBSD
 
   FILE *fp = fopen ("/proc/cpuinfo", "rb");
 
@@ -3748,7 +3800,6 @@ int get_cpu_model (char **name)
 
   fclose (fp);
 
-  #endif
   #endif
 
   #ifdef WINDOWS
@@ -13391,7 +13442,7 @@ void load_hashes (FILE *fp, db_t *db, engine_parameter_t *engine_parameter)
 
   if (separator_warnings > 0)
   {
-    log_warning ("%d salts contain separator-char '%c'", separator_warnings, engine_parameter->separator);
+    log_warning ("%d salts contain separator '%c'", separator_warnings, engine_parameter->separator);
   }
 
   if (engine_parameter->salt_type == SALT_TYPE_EXTERNAL)
@@ -13876,7 +13927,7 @@ int main (int argc, char *argv[])
   #define IDX_RP_GEN_FUNC_MIN 11001
   #define IDX_RP_GEN_FUNC_MAX 11002
   #define IDX_RP_GEN_SEED     11003
-  #define IDX_SEPARATOR_CHAR  'p'
+  #define IDX_SEPARATOR       'p'
   #define IDX_OUTFILE_AUTOHEX_DISABLE 11004
   #define IDX_TOGGLE_MIN      2001
   #define IDX_TOGGLE_MAX      2002
@@ -13941,9 +13992,7 @@ int main (int argc, char *argv[])
                         required_argument, 0, IDX_RP_GEN_SEED},
     {"outfile-autohex-disable",
                         no_argument,       0, IDX_OUTFILE_AUTOHEX_DISABLE},
-    {"separator-char",  required_argument, 0, IDX_SEPARATOR_CHAR},
-    // add legacy support for "old" seperator option (w/ typo)
-    {"seperator-char",  required_argument, 0, IDX_SEPARATOR_CHAR},
+    {"separator",       required_argument, 0, IDX_SEPARATOR},
     {"toggle-min",      required_argument, 0, IDX_TOGGLE_MIN},
     {"toggle-max",      required_argument, 0, IDX_TOGGLE_MAX},
     {"increment",       no_argument,       0, IDX_INCREMENT},
@@ -14030,7 +14079,7 @@ int main (int argc, char *argv[])
                                 rp_gen_seed_chgd   = 1;               break;
       case IDX_OUTFILE_AUTOHEX_DISABLE:
                                 output_autohex     = 0;               break;
-      case IDX_SEPARATOR_CHAR:  separator          = optarg[0];       break;
+      case IDX_SEPARATOR:       separator          = optarg[0];       break;
       case IDX_TOGGLE_MIN:      toggle_min         = atoi (optarg);   break;
       case IDX_TOGGLE_MAX:      toggle_max         = atoi (optarg);   break;
       case IDX_INCREMENT:       increment          = 1;               break;
@@ -14297,7 +14346,7 @@ int main (int argc, char *argv[])
   {
     if (attack_mode == 8)
     {
-      log_error ("increment switch not supported in PRINCE attack mode use --pw-min and --pw-max instead");
+      log_error ("increment switch not supported in PRINCE attack mode. Please use --pw-min and --pw-max instead");
 
       return (-1);
     }
@@ -14347,7 +14396,7 @@ int main (int argc, char *argv[])
 
   if (pw_min > pw_max)
   {
-    log_error ("Value of --pw-min (%d) must be smaller or equal than value of --pw-max (%d)\n", pw_min, pw_max);
+    log_error ("Value of --pw-min (%d) must be smaller or equal than the value of --pw-max (%d)\n", pw_min, pw_max);
 
     return (-1);
   }
@@ -14857,147 +14906,6 @@ int main (int argc, char *argv[])
         index->digests_cnt++;
 
         status_info.proc_hashes++;
-      }
-
-      // salt length
-
-      switch (hash_mode)
-      {
-        case    60: db->salts_buf[0]->ipad_prehashed_buf = mycalloc (16, 1);
-                    db->salts_buf[0]->opad_prehashed_buf = mycalloc (16, 1);
-                    break;
-        case   160: db->salts_buf[0]->ipad_prehashed_buf = mycalloc (20, 1);
-                    db->salts_buf[0]->opad_prehashed_buf = mycalloc (20, 1);
-                    break;
-        case  1460: db->salts_buf[0]->ipad_prehashed_buf = mycalloc (32, 1);
-                    db->salts_buf[0]->opad_prehashed_buf = mycalloc (32, 1);
-                    break;
-        case  1760: db->salts_buf[0]->ipad_prehashed_buf64 = mycalloc (64, 1);
-                    db->salts_buf[0]->opad_prehashed_buf64 = mycalloc (64, 1);
-                    break;
-        case  1500: db->salts_buf[0]->salt_plain_len = 2;
-                    break;
-        case  2410: db->salts_buf[0]->salt_plain_len = 4;
-                    break;
-        case  2500: memcpy (db->salts_buf[0]->salt_plain_buf, "hashcat.net", 11);
-                    db->salts_buf[0]->wpa = (wpa_t *) mycalloc (1, sizeof (wpa_t));
-                    db->salts_buf[0]->wpa->keyver = 1;
-                    break;
-        case  3100: db->salts_buf[0]->salt_plain_len = 1;
-                    break;
-        case  5000: db->salts_buf[0]->keccak_mdlen = 32;
-                    db->salts_buf[0]->keccak_rsiz  = 136; // 200 - (2 * 32)
-                    break;
-        case  5300: {
-                      ikepsk_t *ikepsk = mymalloc (sizeof (ikepsk_t));
-                      ikepsk->nr_len  = 1;
-                      ikepsk->msg_len = 1;
-
-                      db->salts_buf[0]->ikepsk = ikepsk;
-                    }
-                    break;
-        case  5400: {
-                      ikepsk_t *ikepsk = mymalloc (sizeof (ikepsk_t));
-                      ikepsk->nr_len  = 1;
-                      ikepsk->msg_len = 1;
-
-                      db->salts_buf[0]->ikepsk = ikepsk;
-                    }
-                    break;
-        case  5500: {
-                      netntlm_t *netntlm = mymalloc (sizeof (netntlm_t));
-                      netntlm->user_len = 1;
-                      netntlm->domain_len = 1;
-                      netntlm->srvchall_len = 1;
-                      netntlm->clichall_len = 1;
-
-                      db->salts_buf[0]->netntlm = netntlm;
-                    }
-                    break;
-        case  5600: {
-                      netntlm_t *netntlm = mymalloc (sizeof (netntlm_t));
-                      netntlm->user_len = 1;
-                      netntlm->domain_len = 1;
-                      netntlm->srvchall_len = 1;
-                      netntlm->clichall_len = 1;
-
-                      db->salts_buf[0]->netntlm = netntlm;
-                    }
-                    break;
-        case  5800: {
-                      db->salts_buf[0]->salt_plain_len = 16;
-                      plains_iteration = mycalloc (1024, sizeof (plain_t*));
-
-                      uint32_t i;
-
-                      for (i = 0; i < 1024; i++)
-                      {
-                        plains_iteration[i] = mycalloc (4, sizeof (plain_t));
-                      }
-                    }
-                    break;
-        case  8400: db->salts_buf[0]->salt_plain_len = 40;
-                    break;
-        case  8900: db->salts_buf[0]->salt_plain_len = 16;
-                    db->salts_buf[0]->scrypt_N = 16384;
-                    db->salts_buf[0]->scrypt_r = 8;
-                    db->salts_buf[0]->scrypt_p = 1;
-                    break;
-        case  9300: db->salts_buf[0]->salt_plain_len = 14;
-                    db->salts_buf[0]->scrypt_N = 16384;
-                    db->salts_buf[0]->scrypt_r = 1;
-                    db->salts_buf[0]->scrypt_p = 1;
-                    break;
-        case 10300: db->salts_buf[0]->salt_plain_len = 24;
-                    break;
-      }
-
-      // rounds
-
-      switch (hash_mode)
-      {
-        case   400: db->salts_buf[0]->iterations = PHPASS_ROUNDS;
-                    break;
-        case   500: db->salts_buf[0]->iterations = MD5UNIX_ROUNDS;
-                    break;
-        case  1600: db->salts_buf[0]->iterations = MD5APR_ROUNDS;
-                    break;
-        case  1800: db->salts_buf[0]->iterations = SHA512UNIX_ROUNDS;
-                    break;
-        case  2500: db->salts_buf[0]->iterations = WPA2_ROUNDS;
-                    break;
-        case  3200: db->salts_buf[0]->iterations = BCRYPT_ROUNDS;
-                    break;
-        case  5200: db->salts_buf[0]->iterations = PSAFE3_ROUNDS;
-                    break;
-        case  5800: db->salts_buf[0]->iterations = ANDROID_PIN_ROUNDS - 1;
-                    break;
-        case  6300: db->salts_buf[0]->iterations = MD5UNIX_ROUNDS;
-                    break;
-        case  6400: db->salts_buf[0]->iterations = SHA256AIX_ROUNDS;
-                    break;
-        case  6500: db->salts_buf[0]->iterations = SHA512AIX_ROUNDS;
-                    break;
-        case  6700: db->salts_buf[0]->iterations = SHA1AIX_ROUNDS;
-                    break;
-        case  7100: db->salts_buf[0]->iterations = PBKDF2OSX_ROUNDS;
-                    break;
-        case  7200: db->salts_buf[0]->iterations = PBKDF2GRUB_ROUNDS;
-                    break;
-        case  7400: db->salts_buf[0]->iterations = SHA256UNIX_ROUNDS;
-                    break;
-        case  7900: db->salts_buf[0]->iterations = DRUPAL7_ROUNDS;
-                    break;
-        case  8900: db->salts_buf[0]->iterations = 1;
-                    break;
-        case  9200: db->salts_buf[0]->iterations = CISCO_SECRET8_ROUNDS;
-                    break;
-        case  9300: db->salts_buf[0]->iterations = 1;
-                    break;
-        case 10000: db->salts_buf[0]->iterations = DJANGO_SHA256_ROUNDS;
-                    break;
-        case 10300: db->salts_buf[0]->iterations = SAP_H_SHA1_ROUNDS;
-                    break;
       }
     }
 
@@ -15510,6 +15418,153 @@ int main (int argc, char *argv[])
                   |  (engine_parameter->salt_type == SALT_TYPE_EXTERNAL)
                   |  (engine_parameter->salt_type == SALT_TYPE_EMBEDDED));
 
+    if (benchmark == 1)
+    {
+      // salt length
+
+      if (isSalted)
+      {
+        db->salts_buf[0]->salt_plain_len = 8;
+      }
+
+      switch (hash_mode)
+      {
+        case    60: db->salts_buf[0]->ipad_prehashed_buf = mycalloc (16, 1);
+                    db->salts_buf[0]->opad_prehashed_buf = mycalloc (16, 1);
+                    break;
+        case   160: db->salts_buf[0]->ipad_prehashed_buf = mycalloc (20, 1);
+                    db->salts_buf[0]->opad_prehashed_buf = mycalloc (20, 1);
+                    break;
+        case  1460: db->salts_buf[0]->ipad_prehashed_buf = mycalloc (32, 1);
+                    db->salts_buf[0]->opad_prehashed_buf = mycalloc (32, 1);
+                    break;
+        case  1760: db->salts_buf[0]->ipad_prehashed_buf64 = mycalloc (64, 1);
+                    db->salts_buf[0]->opad_prehashed_buf64 = mycalloc (64, 1);
+                    break;
+        case  1500: db->salts_buf[0]->salt_plain_len = 2;
+                    break;
+        case  2410: db->salts_buf[0]->salt_plain_len = 4;
+                    break;
+        case  2500: memcpy (db->salts_buf[0]->salt_plain_buf, "hashcat.net", 11);
+                    db->salts_buf[0]->wpa = (wpa_t *) mycalloc (1, sizeof (wpa_t));
+                    db->salts_buf[0]->wpa->keyver = 1;
+                    break;
+        case  5000: db->salts_buf[0]->keccak_mdlen = 32;
+                    db->salts_buf[0]->keccak_rsiz  = 136; // 200 - (2 * 32)
+                    break;
+        case  5300: {
+                      ikepsk_t *ikepsk = mymalloc (sizeof (ikepsk_t));
+                      ikepsk->nr_len  = 1;
+                      ikepsk->msg_len = 1;
+
+                      db->salts_buf[0]->ikepsk = ikepsk;
+                    }
+                    break;
+        case  5400: {
+                      ikepsk_t *ikepsk = mymalloc (sizeof (ikepsk_t));
+                      ikepsk->nr_len  = 1;
+                      ikepsk->msg_len = 1;
+
+                      db->salts_buf[0]->ikepsk = ikepsk;
+                    }
+                    break;
+        case  5500: {
+                      netntlm_t *netntlm = mymalloc (sizeof (netntlm_t));
+                      netntlm->user_len = 1;
+                      netntlm->domain_len = 1;
+                      netntlm->srvchall_len = 1;
+                      netntlm->clichall_len = 1;
+
+                      db->salts_buf[0]->netntlm = netntlm;
+                    }
+                    break;
+        case  5600: {
+                      netntlm_t *netntlm = mymalloc (sizeof (netntlm_t));
+                      netntlm->user_len = 1;
+                      netntlm->domain_len = 1;
+                      netntlm->srvchall_len = 1;
+                      netntlm->clichall_len = 1;
+
+                      db->salts_buf[0]->netntlm = netntlm;
+                    }
+                    break;
+        case  5800: {
+                      db->salts_buf[0]->salt_plain_len = 16;
+                      plains_iteration = mycalloc (1024, sizeof (plain_t*));
+
+                      uint32_t i;
+
+                      for (i = 0; i < 1024; i++)
+                      {
+                        plains_iteration[i] = mycalloc (4, sizeof (plain_t));
+                      }
+                    }
+                    break;
+        case  8400: db->salts_buf[0]->salt_plain_len = 40;
+                    break;
+        case  8900: db->salts_buf[0]->salt_plain_len = 16;
+                    db->salts_buf[0]->scrypt_N = 16384;
+                    db->salts_buf[0]->scrypt_r = 8;
+                    db->salts_buf[0]->scrypt_p = 1;
+                    break;
+        case  9300: db->salts_buf[0]->salt_plain_len = 14;
+                    db->salts_buf[0]->scrypt_N = 16384;
+                    db->salts_buf[0]->scrypt_r = 1;
+                    db->salts_buf[0]->scrypt_p = 1;
+                    break;
+        case 10300: db->salts_buf[0]->salt_plain_len = 24;
+                    break;
+      }
+
+      // rounds
+
+      switch (hash_mode)
+      {
+        case   400: db->salts_buf[0]->iterations = PHPASS_ROUNDS;
+                    break;
+        case   500: db->salts_buf[0]->iterations = MD5UNIX_ROUNDS;
+                    break;
+        case  1600: db->salts_buf[0]->iterations = MD5APR_ROUNDS;
+                    break;
+        case  1800: db->salts_buf[0]->iterations = SHA512UNIX_ROUNDS;
+                    break;
+        case  2500: db->salts_buf[0]->iterations = WPA2_ROUNDS;
+                    break;
+        case  3200: db->salts_buf[0]->iterations = BCRYPT_ROUNDS;
+                    break;
+        case  5200: db->salts_buf[0]->iterations = PSAFE3_ROUNDS;
+                    break;
+        case  5800: db->salts_buf[0]->iterations = ANDROID_PIN_ROUNDS - 1;
+                    break;
+        case  6300: db->salts_buf[0]->iterations = MD5UNIX_ROUNDS;
+                    break;
+        case  6400: db->salts_buf[0]->iterations = SHA256AIX_ROUNDS;
+                    break;
+        case  6500: db->salts_buf[0]->iterations = SHA512AIX_ROUNDS;
+                    break;
+        case  6700: db->salts_buf[0]->iterations = SHA1AIX_ROUNDS;
+                    break;
+        case  7100: db->salts_buf[0]->iterations = PBKDF2OSX_ROUNDS;
+                    break;
+        case  7200: db->salts_buf[0]->iterations = PBKDF2GRUB_ROUNDS;
+                    break;
+        case  7400: db->salts_buf[0]->iterations = SHA256UNIX_ROUNDS;
+                    break;
+        case  7900: db->salts_buf[0]->iterations = DRUPAL7_ROUNDS;
+                    break;
+        case  8900: db->salts_buf[0]->iterations = 1;
+                    break;
+        case  9200: db->salts_buf[0]->iterations = CISCO_SECRET8_ROUNDS;
+                    break;
+        case  9300: db->salts_buf[0]->iterations = 1;
+                    break;
+        case 10000: db->salts_buf[0]->iterations = DJANGO_SHA256_ROUNDS;
+                    break;
+        case 10300: db->salts_buf[0]->iterations = SAP_H_SHA1_ROUNDS;
+                    break;
+      }
+    }
+
     /*
      * external salts
      */
@@ -15677,6 +15732,13 @@ int main (int argc, char *argv[])
     {
       if (file_hashes)
       {
+        if (benchmark == 1)
+        {
+          log_error ("Can not run benchmark against a hash file");
+
+          exit (-1);
+        }
+
         FILE *fp;
 
         if ((fp = fopen (file_hashes, "rb")) != NULL)
@@ -15973,7 +16035,7 @@ int main (int argc, char *argv[])
 
           if ((fp = fopen (engine_parameter->file_words, "rb")) != NULL)
           {
-            #ifdef POSIX
+            #if defined LINUX || defined OSX || defined FREEBSD
             struct stat file;
 
             stat (engine_parameter->file_words, &file);
@@ -16455,6 +16517,13 @@ int main (int argc, char *argv[])
     }
     else if (attack_mode == 8)
     {
+      /* hack: since run_threads () and hashing_xxxxx () will use these engine_parameter->words_skip and engine_parameter->words_limit
+       * values, we need to make sure that we don't skip and limit twice, therefore we set them to 0 here, because the below PRINCE algo
+       * already does the skipping/limiting
+       */
+      engine_parameter->words_skip  = 0;
+      engine_parameter->words_limit = 0;
+
       mpz_t pw_ks_pos[OUT_LEN_MAX + 1];
       mpz_t pw_ks_cnt[OUT_LEN_MAX + 1];
 
@@ -16721,7 +16790,7 @@ int main (int argc, char *argv[])
       {
         if (mpz_cmp (skip, total_ks_cnt) >= 0)
         {
-          fprintf (stderr, "Value of --skip must be smaller than total keyspace\n");
+          fprintf (stderr, "Value of --words-skip must be smaller than total keyspace\n");
 
           free (wordlen_dist);
 
@@ -16733,7 +16802,7 @@ int main (int argc, char *argv[])
       {
         if (mpz_cmp (limit, total_ks_cnt) > 0)
         {
-          fprintf (stderr, "Value of --limit cannot be larger than total keyspace\n");
+          fprintf (stderr, "Value of --words-limit cannot be larger than total keyspace\n");
 
           return (-1);
         }
@@ -16742,7 +16811,7 @@ int main (int argc, char *argv[])
 
         if (mpz_cmp (tmp, total_ks_cnt) > 0)
         {
-          fprintf (stderr, "Value of --skip + --limit cannot be larger than total keyspace\n");
+          fprintf (stderr, "Value of --words-skip + --words-limit cannot be larger than total keyspace\n");
 
           return (-1);
         }
@@ -17064,6 +17133,11 @@ int main (int argc, char *argv[])
       free (wordlen_dist);
       free (pw_orders);
       free (db_entries);
+
+      // don't forget to reset the skip and limit values
+
+      engine_parameter->words_skip  = words_skip;
+      engine_parameter->words_limit = words_limit;
     }
 
     /*

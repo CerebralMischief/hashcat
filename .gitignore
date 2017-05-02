@@ -2,5 +2,8 @@
 *.bin
 *.app
 hashcat.pot
+obj/*/*.o
 obj/*.o
 release/*
+deps/*
+deps/**
